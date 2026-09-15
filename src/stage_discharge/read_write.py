@@ -11,7 +11,7 @@ import re
 import warnings
 import pandas as pd
 from . import standard_names as sn
-from .conversions import normalize_unit   # one shared normalization rule
+from .conversions import normalize_unit, convert_to_si   # shared normalize + SI conversion
 
 
 # --- shared naming helpers -----------------------------------------------
@@ -148,14 +148,16 @@ def parse_metadata(header):
     return meta
 
 
-def clean_vusitu_log(data, meta=None, source_tz=VUSITU_SOURCE_TZ):
-    """Clean a VuSitu frame and put its datetime on a UTC index.
+def clean_vusitu_log(data, units, meta=None, source_tz=VUSITU_SOURCE_TZ):
+    """Clean a VuSitu frame: UTC datetime index + SI units. Returns (data, units).
 
     VuSitu logs NAIVE LOCAL time. source_tz is the sonde's clock (default
     VUSITU_SOURCE_TZ = fixed UTC-5). The naive stamps are localized to source_tz
     then converted to UTC, so this frame aligns with the HOBO and LI-COR readers
     (both already UTC). 'Start Time' from meta shares the data's local clock, so
-    it gets the same localize-then-convert before comparison.
+    it gets the same localize-then-convert before comparison. Values are then run
+    through convert_to_si (psi->Pa, ft/cm/mm->m, °F->°C), so the frame handed
+    downstream is UTC + SI -- exactly what build_stage's guards require.
     """
     data = data.copy()
 
@@ -178,7 +180,8 @@ def clean_vusitu_log(data, meta=None, source_tz=VUSITU_SOURCE_TZ):
     else:
         data = data[data["datetime"] >= pd.Timestamp("2000-01-01", tz="UTC")]  # drop epoch junk
 
-    return data.set_index("datetime").sort_index()
+    data = data.set_index("datetime").sort_index()
+    return convert_to_si(data, units)
 
 
 # --- HOBO -----------------------------------------------------------------
@@ -222,7 +225,10 @@ def read_hobo_log(file_path, date_format="%y-%m-%d %H:%M:%S %z"):
     return data, units
 
 
-def clean_hobo_log(data):
+def clean_hobo_log(data, units):
+    """Clean a HOBO frame: UTC datetime index (already set on read) + SI units.
+    Returns (data, units) -- SI-converted, so downstream sees the same UTC + SI
+    contract as the VuSitu and LI-COR paths."""
     data = data.copy()
     value_cols = [c for c in data.columns if c != "datetime"]
     for col in value_cols:
@@ -230,4 +236,5 @@ def clean_hobo_log(data):
     # Keep rows with ANY real reading -- do NOT require all channels present.
     data = data.dropna(subset=["datetime"])
     data = data.dropna(subset=value_cols, how="all")
-    return data.set_index("datetime").sort_index()
+    data = data.set_index("datetime").sort_index()
+    return convert_to_si(data, units)

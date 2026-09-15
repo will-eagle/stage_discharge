@@ -3,6 +3,23 @@ import pandas as pd
 from scipy.optimize import curve_fit
 import matplotlib.pyplot as plt
 
+from .build_stage import _require_si, _require_utc   # same SI + UTC guards as the physics
+
+
+def _to_si_values(x, *, si_length=False):
+    """Coerce stage/discharge to a float array, enforcing the pipeline's SI + UTC
+    contract on any pandas input. A DatetimeIndex must be UTC; a stage series
+    (si_length=True) must carry an SI length suffix (_m). Bare arrays -- e.g.
+    hand-entered field measurements -- pass through, their SI contract (m, m^3/s)
+    resting on the caller."""
+    if isinstance(x, (pd.Series, pd.DataFrame)):
+        if isinstance(x.index, pd.DatetimeIndex):
+            _require_utc(x.index)
+        if si_length:
+            names = list(x.columns) if isinstance(x, pd.DataFrame) else [x.name]
+            _require_si([n for n in names if n is not None])
+    return np.asarray(x, dtype=float)
+
 
 class RatingCurve:
     """Fit a stage-discharge rating from field measurements, then predict
@@ -44,9 +61,10 @@ class RatingCurve:
         
         if self.stage is None or self.discharge is None:
             raise RuntimeError("stage and discharge data must be set before calling calculate_curve()")
-            
-        stage = np.asarray(self.stage, dtype=float)
-        discharge = np.asarray(self.discharge, dtype=float)
+
+        # SI + UTC required for the fit: stage in metres, discharge in m^3/s.
+        stage = _to_si_values(self.stage, si_length=True)
+        discharge = _to_si_values(self.discharge)
         
         # Fit in log-log space if log_linear is selected
         if method == "log_linear":
@@ -62,8 +80,9 @@ class RatingCurve:
     def predict(self, stage):
         if self.model is None:
             raise RuntimeError("call calculate_curve() before predict()")
-            
-        stage_arr = np.asarray(stage, dtype=float)
+
+        # A pipeline stage series must be SI (metres) and UTC-indexed.
+        stage_arr = _to_si_values(stage, si_length=True)
         pred = self.model(stage_arr, *self.popt)
         
         # Exponentiate back to linear discharge units if using log_linear

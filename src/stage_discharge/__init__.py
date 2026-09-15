@@ -10,7 +10,7 @@ from .read_write import (
     parse_metadata,
 )
 from .conversions import convert_to_si
-from .build_stage import calc_depth, calc_diff_pressure
+from .build_stage import build_stage, calc_depth, calc_diff_pressure
 from .hobo_fetch import fetch_licor_data, tidy_licor_data
 from .rating_curve import RatingCurve
 
@@ -21,6 +21,7 @@ __all__ = [
     "clean_vusitu_log",
     "parse_metadata",
     "convert_to_si",
+    "build_stage",
     "calc_depth",
     "calc_diff_pressure",
     "fetch_licor_data",
