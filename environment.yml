@@ -11,18 +11,19 @@ dependencies:
   - numpy
   - pandas
   - scipy
-  - matplotlib-base         
+  - matplotlib-base   
+  - dotenv      
 
   # --- notebooks & interactive viz -----------------------------------------
   - jupyterlab
   - ipython
-  - ipywidgets               # baseflow_recession curation widgets
-  - plotly                   # most analyses' interactive figures
-  - python-kaleido           # static plotly export (fig.write_image)
+  - ipywidgets               
+  - plotly                   
+  - python-kaleido          
 
   # --- data access ----------------------------------------------------------
-  - dataretrieval            # USGS NWIS pulls (bnrec.io, texmesonet)
-  - requests                 # MRMS / TexMesonet fetchers
+  - dataretrieval            
+  - requests               
 
   # --- config ---------------------------------------------------------------
   - pyyaml                   # bnrec config + exclusions round-trip

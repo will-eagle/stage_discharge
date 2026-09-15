@@ -12,7 +12,8 @@ dependencies = [
     "pandas",
     "numpy",
     "scipy",
-    "matplotlib"
+    "matplotlib",
+    "dotenv"
     # add the rest of what read_write / build_stage actually import
 ]
 
