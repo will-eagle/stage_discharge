@@ -1,0 +1,28 @@
+name: stage_discharge
+
+channels:
+  - conda-forge
+
+dependencies:
+  - python=3.13
+  - pip
+
+  # --- core scientific stack ------------------------------------------------
+  - numpy
+  - pandas
+  - scipy
+  - matplotlib-base         
+
+  # --- notebooks & interactive viz -----------------------------------------
+  - jupyterlab
+  - ipython
+  - ipywidgets               # baseflow_recession curation widgets
+  - plotly                   # most analyses' interactive figures
+  - python-kaleido           # static plotly export (fig.write_image)
+
+  # --- data access ----------------------------------------------------------
+  - dataretrieval            # USGS NWIS pulls (bnrec.io, texmesonet)
+  - requests                 # MRMS / TexMesonet fetchers
+
+  # --- config ---------------------------------------------------------------
+  - pyyaml                   # bnrec config + exclusions round-trip

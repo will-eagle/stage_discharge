@@ -1,0 +1,9 @@
+pandas
+numpy
+scipy
+matplotlib
+
+[dev]
+pytest
+jupyter
+ipykernel
