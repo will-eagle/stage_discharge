@@ -9,7 +9,7 @@ from .read_write import (
     clean_vusitu_log,
     parse_metadata,
 )
-from .conversions import convert_to_si
+from .conversions import to_units
 from .build_stage import build_stage, calc_depth, calc_diff_pressure
 from .hobo_fetch import fetch_licor_data, tidy_licor_data
 from .rating_curve import RatingCurve
@@ -20,7 +20,7 @@ __all__ = [
     "clean_hobo_log",
     "clean_vusitu_log",
     "parse_metadata",
-    "convert_to_si",
+    "to_units",
     "build_stage",
     "calc_depth",
     "calc_diff_pressure",

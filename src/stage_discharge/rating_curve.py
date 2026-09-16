@@ -4,6 +4,7 @@ from scipy.optimize import curve_fit
 import matplotlib.pyplot as plt
 
 from .build_stage import _require_si, _require_utc   # same SI + UTC guards as the physics
+from .conversions import to_units                    # SI -> US for display
 
 
 def _to_si_values(x, *, si_length=False):
@@ -73,8 +74,16 @@ class RatingCurve:
         else:
             xdata = stage
             ydata = discharge
-            
-        self.popt, self.pcov = curve_fit(self.model, xdata, ydata)
+
+        # powerlaw a*(x-b)**k NaNs when x <= b, so the default p0=[1,1,1] rarely
+        # converges. Seed b (cease-to-flow) just below the lowest stage so the base
+        # stays positive, with a modest exponent.
+        p0 = None
+        if method == "powerlaw":
+            span = (stage.max() - stage.min()) or 1.0
+            p0 = [1.0, stage.min() - 0.1 * span, 2.0]
+
+        self.popt, self.pcov = curve_fit(self.model, xdata, ydata, p0=p0)
         return self.popt, self.pcov
 
     def predict(self, stage):
@@ -96,7 +105,7 @@ class RatingCurve:
         if self.stage is None or self.discharge is None:
             raise RuntimeError("stage and discharge data must be set before plotting()")
             
-        fig, ax = plt.subplots(figsize=(8, 5))
+        fig, ax = plt.subplots(figsize=(10, 6))
         
         # Scatter plot for raw measurements
         ax.scatter(
@@ -109,7 +118,7 @@ class RatingCurve:
         if self.model is not None and self.popt is not None:
             stage_smooth = np.linspace(np.min(self.stage), np.max(self.stage), 200)
             discharge_smooth = self.predict(stage_smooth)
-            ax.scatter(
+            ax.plot(
                 stage_smooth, discharge_smooth, 
                 color='crimson', linewidth=2.5, linestyle='-', 
                 zorder=2, label=f'Fitted Curve ({self.method})'
@@ -124,3 +133,26 @@ class RatingCurve:
         
         plt.tight_layout()
         plt.show()
+
+    def plot_discharge(self, stage, units='SI', yscale = 'linear'):
+        """Plot predicted discharge over time from a stage series.
+
+        `stage` is a water_level_m Series on a UTC index (e.g. build_stage output);
+        predict() enforces SI + UTC. Discharge is predicted in m³/s; units='US'
+        converts the series to cfs (via to_units) before plotting.
+        """
+        pred = pd.DataFrame({"discharge_cms": self.predict(stage)},
+                            index=getattr(stage, "index", None))
+        if units == 'US':
+            pred = to_units(pred, "US")          # discharge_cms -> discharge_cfs
+        col = pred.columns[0]
+
+        fig, ax = plt.subplots(figsize=(14, 5))
+        ax.plot(pred.index, pred[col], color='blue')
+        ax.set_xlabel('Datetime')
+        ax.set_ylabel('Discharge (cfs)' if units == 'US' else 'Discharge (m³/s)')
+        ax.set_title(f'{self.site} Discharge')
+        ax.set_yscale(yscale)
+        plt.tight_layout()
+        plt.show()
+        

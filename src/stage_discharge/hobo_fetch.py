@@ -3,7 +3,7 @@ import pandas as pd
 import warnings
 from . import standard_names as sn
 from .read_write import _add_unit_suffix   # same suffix rule as the other readers
-from .conversions import convert_to_si     # same SI conversion as clean_*
+from .conversions import to_units          # same SI conversion as clean_*
 
 
 def fetch_licor_data(serial_number, start_date, end_date, token, report=False):
@@ -31,8 +31,8 @@ def fetch_licor_data(serial_number, start_date, end_date, token, report=False):
 def tidy_licor_data(data):
     '''Parse the JSON dict from fetch_licor_data into a tidy wide-format frame
     (one row per timestamp), with columns on canonical standard names. The frame
-    is put on a UTC index and run through convert_to_si, so it lands on the same
-    UTC + SI contract as clean_hobo_log / clean_vusitu_log. Returns (data, units).'''
+    is put on a UTC index and run through to_units(..., "SI"), so it lands on the
+    same UTC + SI contract as clean_hobo_log / clean_vusitu_log. Returns (data, units).'''
     df = pd.DataFrame(data["data"])
     df["timestamp"] = pd.to_datetime(df["timestamp"], utc=True)
 
@@ -64,4 +64,4 @@ def tidy_licor_data(data):
         values="value",
     )
     df_wide.index.name = "datetime"           # match the clean_* readers' index name
-    return convert_to_si(df_wide, units)
+    return to_units(df_wide, "SI"), units

@@ -2,16 +2,16 @@
 
 Each reader's job is to normalize STRUCTURE and VOCABULARY only: it reshapes to
 one-row-per-timestamp, resolves instrument names to canonical standard names
-(see standard_names.py), and extracts units. It does not convert units -- that
-is convert_to_si's job. It DOES put datetimes on a UTC index, so all three
-sources are on one clock downstream.
+(see standard_names.py), and puts the unit on each column's name suffix. It does
+not convert units -- clean_* does, via to_units. It DOES put datetimes on a UTC
+index, so all three sources are on one clock downstream.
 """
 
 import re
 import warnings
 import pandas as pd
 from . import standard_names as sn
-from .conversions import normalize_unit, convert_to_si   # shared normalize + SI conversion
+from .conversions import normalize_unit, to_units   # shared normalize + SI conversion
 
 
 # --- shared naming helpers -----------------------------------------------
@@ -39,9 +39,9 @@ def _apply_alias(base_key, alias_map, source):
 
 def _add_unit_suffix(key, unit):
     """'temperature' + '°C' -> 'temperature_c'. Uses conversions.normalize_unit
-    so the suffix here matches the key convert_to_si looks up -- one rule, no
-    drift. Unit stays on the name so convert_to_si can rewrite it in lockstep
-    with the value."""
+    so the suffix here matches the key to_units looks up -- one rule, no drift.
+    Unit stays on the name so to_units can rewrite it in lockstep with the
+    value."""
     if unit:
         suffix = normalize_unit(unit)
         if suffix:
@@ -148,15 +148,19 @@ def parse_metadata(header):
     return meta
 
 
-def clean_vusitu_log(data, units, meta=None, source_tz=VUSITU_SOURCE_TZ):
-    """Clean a VuSitu frame: UTC datetime index + SI units. Returns (data, units).
+def clean_vusitu_log(data, meta=None, source_tz=VUSITU_SOURCE_TZ):
+    """Clean a VuSitu frame: UTC datetime index + SI units. Returns the DataFrame.
+
+    The source unit rides on each column's name suffix (from read_vusitu_log), so
+    to_units reads it directly -- no units dict needed. The result is SI, on a UTC
+    index: exactly what build_stage's guards require.
 
     VuSitu logs NAIVE LOCAL time. source_tz is the sonde's clock (default
     VUSITU_SOURCE_TZ = fixed UTC-5). The naive stamps are localized to source_tz
     then converted to UTC, so this frame aligns with the HOBO and LI-COR readers
     (both already UTC). 'Start Time' from meta shares the data's local clock, so
     it gets the same localize-then-convert before comparison. Values are then run
-    through convert_to_si (psi->Pa, ft/cm/mm->m, °F->°C), so the frame handed
+    through to_units(..., "SI") (psi->Pa, ft/cm/mm->m, °F->°C), so the frame handed
     downstream is UTC + SI -- exactly what build_stage's guards require.
     """
     data = data.copy()
@@ -181,7 +185,7 @@ def clean_vusitu_log(data, units, meta=None, source_tz=VUSITU_SOURCE_TZ):
         data = data[data["datetime"] >= pd.Timestamp("2000-01-01", tz="UTC")]  # drop epoch junk
 
     data = data.set_index("datetime").sort_index()
-    return convert_to_si(data, units)
+    return to_units(data, "SI")
 
 
 # --- HOBO -----------------------------------------------------------------
@@ -225,10 +229,11 @@ def read_hobo_log(file_path, date_format="%y-%m-%d %H:%M:%S %z"):
     return data, units
 
 
-def clean_hobo_log(data, units):
+def clean_hobo_log(data):
     """Clean a HOBO frame: UTC datetime index (already set on read) + SI units.
-    Returns (data, units) -- SI-converted, so downstream sees the same UTC + SI
-    contract as the VuSitu and LI-COR paths."""
+    Returns the DataFrame. The source unit rides on each column's name suffix, so
+    to_units converts to SI directly (same UTC + SI contract as the VuSitu and
+    LI-COR paths)."""
     data = data.copy()
     value_cols = [c for c in data.columns if c != "datetime"]
     for col in value_cols:
@@ -237,4 +242,4 @@ def clean_hobo_log(data, units):
     data = data.dropna(subset=["datetime"])
     data = data.dropna(subset=value_cols, how="all")
     data = data.set_index("datetime").sort_index()
-    return convert_to_si(data, units)
+    return to_units(data, "SI")

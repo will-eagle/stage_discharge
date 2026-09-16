@@ -7,20 +7,20 @@ from .standard_names import (
 
 G = 9.80665   # standard gravity, m/s^2
 
-_SI_TOKENS = {"pa", "m", "c"}   # the target unit suffixes convert_to_si emits
+_SI_TOKENS = {"pa", "m", "c"}   # the target unit suffixes to_units(..., "SI") emits
 
 
 def _require_si(names):
     """Guard: refuse to run physics on non-SI columns. The unit suffix IS the
     assertion -- a name carries an SI unit token (_pa/_m/_c) only if
-    convert_to_si produced it. Membership (not just the final token) is checked
-    so a merge-suffixed 'temperature_c_abs' still reads as SI while a raw
+    to_units(..., "SI") produced it. Membership (not just the final token) is
+    checked so a merge-suffixed 'temperature_c_abs' still reads as SI while a raw
     'abs_pressure_psi' or 'stage_ft' is rejected."""
     bad = [n for n in names if not (_SI_TOKENS & set(str(n).split("_")))]
     if bad:
         raise ValueError(
             f"non-SI columns reached the physics: {sorted(bad)}. "
-            f"Run convert_to_si() first."
+            f"Run to_units(data, 'SI') first."
         )
 
 

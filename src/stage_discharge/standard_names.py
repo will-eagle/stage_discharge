@@ -2,7 +2,7 @@
 
 Single source of truth for what the pipeline calls each physical quantity.
 Every reader maps its instrument's raw names onto the canonical names below,
-so everything downstream (clean_*, convert_to_si, build_stage) speaks one
+so everything downstream (clean_*, to_units, build_stage) speaks one
 vocabulary regardless of which instrument produced the data.
 """
 
@@ -11,7 +11,8 @@ DIFF_PRESSURE = "diff_pressure"
 ABS_PRESSURE  = "abs_pressure"
 BARO_PRESSURE = "baro_pressure"
 TEMPERATURE   = "temperature"
-WATER_LEVEL   = "water_level"
+WATER_LEVEL   = "water_level"   # stage, from build_stage
+DISCHARGE     = "discharge"     # rating-curve output / field gaugings
 
 # --- per-source alias maps: normalized base name -> canonical ------------
 # Keys are the base measurement name AFTER a reader lowercases/underscores it
@@ -50,4 +51,5 @@ CANONICAL_UNITS = {
     BARO_PRESSURE: "Pa",
     TEMPERATURE:   "°C",
     WATER_LEVEL:   "m",
+    DISCHARGE:     "m³/s",
 }
