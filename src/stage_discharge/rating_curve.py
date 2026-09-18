@@ -5,6 +5,7 @@ import matplotlib.pyplot as plt
 
 from .build_stage import _require_si, _require_utc   # same SI + UTC guards as the physics
 from .conversions import to_units                    # SI -> US for display
+import plotly.graph_objects as go
 
 
 def _to_si_values(x, *, si_length=False):
@@ -134,17 +135,15 @@ class RatingCurve:
         plt.tight_layout()
         plt.show()
 
-    def plot_discharge(self, stage, units='SI', yscale = 'linear'):
-        """Plot predicted discharge over time from a stage series.
-
-        `stage` is a water_level_m Series on a UTC index (e.g. build_stage output);
-        predict() enforces SI + UTC. Discharge is predicted in m³/s; units='US'
-        converts the series to cfs (via to_units) before plotting.
-        """
+    def plot_discharge(self, stage, units='SI', yscale='linear',
+                   startdate=None, enddate=None):
         pred = pd.DataFrame({"discharge_cms": self.predict(stage)},
                             index=getattr(stage, "index", None))
         if units == 'US':
             pred = to_units(pred, "US")          # discharge_cms -> discharge_cfs
+
+        if startdate is not None or enddate is not None:
+            pred = pred.loc[startdate:enddate]
         col = pred.columns[0]
 
         fig, ax = plt.subplots(figsize=(14, 5))
@@ -155,4 +154,36 @@ class RatingCurve:
         ax.set_yscale(yscale)
         plt.tight_layout()
         plt.show()
-        
+
+    def plot_discharge_plotly(self, stage, units='SI', yscale='linear',
+                    startdate=None, enddate=None):
+        pred = pd.DataFrame({"discharge_cms": self.predict(stage)},
+                            index=getattr(stage, "index", None))
+        if units == 'US':
+            pred = to_units(pred, "US")          # discharge_cms -> discharge_cfs
+
+        if startdate is not None or enddate is not None:
+            pred = pred.loc[startdate:enddate]
+        col = pred.columns[0]
+
+        ylabel = 'Discharge (cfs)' if units == 'US' else 'Discharge (m³/s)'
+
+        fig = go.Figure()
+        fig.add_trace(go.Scatter(
+            x=pred.index,
+            y=pred[col],
+            mode='lines',
+            line=dict(color='blue'),
+            name=ylabel,
+        ))
+        fig.update_layout(
+            title=f'{self.site} Discharge',
+            xaxis_title='Datetime',
+            yaxis_title=ylabel,
+            width=1000,
+            height=450,
+        )
+        fig.update_yaxes(type='log' if yscale == 'log' else 'linear')
+        fig.show()
+        return fig
+            
