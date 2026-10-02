@@ -10,6 +10,7 @@ dependencies:
   # --- core scientific stack ------------------------------------------------
   - numpy
   - pandas
+  - openpyxl
   - scipy
   - matplotlib-base   
 
